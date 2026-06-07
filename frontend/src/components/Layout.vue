@@ -45,6 +45,20 @@
           <el-icon><List /></el-icon>
           <span>代寄件管理</span>
         </el-menu-item>
+        <el-sub-menu index="pricing">
+          <template #title>
+            <el-icon><Money /></el-icon>
+            <span>价格管理</span>
+          </template>
+          <el-menu-item index="/express-company">
+            <el-icon><OfficeBuilding /></el-icon>
+            <span>快递公司维护</span>
+          </el-menu-item>
+          <el-menu-item index="/price-template">
+            <el-icon><Tickets /></el-icon>
+            <span>价格模板维护</span>
+          </el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </el-aside>
     <el-container>

@@ -54,6 +54,18 @@ const routes = [
         name: '寄件管理',
         component: () => import('@/views/SendManage.vue'),
         meta: { title: '代寄件管理' }
+      },
+      {
+        path: 'express-company',
+        name: 'ExpressCompany',
+        component: () => import('@/views/ExpressCompany.vue'),
+        meta: { title: '快递公司维护' }
+      },
+      {
+        path: 'price-template',
+        name: 'PriceTemplate',
+        component: () => import('@/views/PriceTemplate.vue'),
+        meta: { title: '价格模板维护' }
       }
     ]
   }
