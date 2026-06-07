@@ -127,7 +127,7 @@ public class PricingService {
             }
             return templateRepository.findAll().stream()
                     .filter(t -> t.getCompany().getId().equals(companyId))
-                    .toList();
+                    .collect(Collectors.toList());
         }
         if (enabled != null && enabled) {
             return templateRepository.findByEnabledTrue();
