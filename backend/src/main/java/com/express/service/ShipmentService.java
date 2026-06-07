@@ -4,7 +4,7 @@ import com.express.dto.ShipmentCreateRequest;
 import com.express.entity.Shipment;
 import com.express.entity.ShipmentStatus;
 import com.express.repository.ShipmentRepository;
-import jakarta.persistence.EntityNotFoundException;
+import javax.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

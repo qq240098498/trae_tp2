@@ -6,7 +6,7 @@ import com.express.dto.PackagePickupRequest;
 import com.express.entity.Package;
 import com.express.entity.PackageStatus;
 import com.express.repository.PackageRepository;
-import jakarta.persistence.EntityNotFoundException;
+import javax.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
@@ -78,14 +79,14 @@ public class PackageService {
 
         if (pickupCode != null && !pickupCode.isEmpty()) {
             return packageRepository.findByPickupCode(pickupCode)
-                    .map(List::of)
-                    .orElse(List.of());
+                    .map(Collections::singletonList)
+                    .orElse(Collections.emptyList());
         }
 
         if (trackingNumber != null && !trackingNumber.isEmpty()) {
             return packageRepository.findByTrackingNumber(trackingNumber)
-                    .map(List::of)
-                    .orElse(List.of());
+                    .map(Collections::singletonList)
+                    .orElse(Collections.emptyList());
         }
 
         if (phone != null && !phone.isEmpty()) {

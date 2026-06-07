@@ -29,10 +29,10 @@ public interface PackageRepository extends JpaRepository<Package, Long> {
     @Query("SELECT p FROM Package p WHERE p.status = :status AND p.createTime < :time")
     List<Package> findPendingPackagesOlderThan(@Param("status") PackageStatus status, @Param("time") LocalDateTime time);
 
-    @Query("SELECT DATE(p.createTime) as date, COUNT(p) as count FROM Package p GROUP BY DATE(p.createTime) ORDER BY date DESC")
+    @Query(value = "SELECT CAST(p.create_time AS DATE) as date, COUNT(p.id) as count FROM packages p GROUP BY CAST(p.create_time AS DATE) ORDER BY date DESC", nativeQuery = true)
     List<Object[]> countPackagesByDate();
 
-    @Query("SELECT COUNT(p) FROM Package p WHERE DATE(p.createTime) = CURRENT_DATE")
+    @Query(value = "SELECT COUNT(p.id) FROM packages p WHERE CAST(p.create_time AS DATE) = CURRENT_DATE", nativeQuery = true)
     long countTodayPackages();
 
     long countByStatus(PackageStatus status);

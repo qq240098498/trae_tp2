@@ -13,4 +13,6 @@ public interface ShipmentRepository extends JpaRepository<Shipment, Long> {
     List<Shipment> findByStatus(ShipmentStatus status);
 
     List<Shipment> findBySenderPhone(String senderPhone);
+
+    long countByStatus(ShipmentStatus status);
 }
