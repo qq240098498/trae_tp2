@@ -10,4 +10,6 @@ public class ShipmentCreateRequest {
     private String receiverPhone;
     private String address;
     private Double weight;
+    private Long companyId;
+    private Long templateId;
 }

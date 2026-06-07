@@ -2,6 +2,7 @@ package com.express.entity;
 
 import javax.persistence.*;
 import lombok.Data;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -30,12 +31,25 @@ public class Shipment {
 
     private Double weight;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id")
+    private ExpressCompany company;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "template_id")
+    private PriceTemplate template;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal freight;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ShipmentStatus status;
 
     @Column(nullable = false)
     private LocalDateTime createTime;
+
+    private LocalDateTime shipTime;
 
     @PrePersist
     protected void onCreate() {
