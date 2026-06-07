@@ -122,8 +122,16 @@ public class PackageService {
         List<DailyStatsResponse> stats = new ArrayList<>();
 
         for (Object[] result : results) {
-            LocalDate date = (LocalDate) result[0];
-            Long count = (Long) result[1];
+            LocalDate date;
+            Object dateObj = result[0];
+            if (dateObj instanceof LocalDate) {
+                date = (LocalDate) dateObj;
+            } else if (dateObj instanceof java.sql.Date) {
+                date = ((java.sql.Date) dateObj).toLocalDate();
+            } else {
+                date = LocalDate.parse(dateObj.toString());
+            }
+            Long count = ((Number) result[1]).longValue();
             stats.add(new DailyStatsResponse(date, count));
         }
 

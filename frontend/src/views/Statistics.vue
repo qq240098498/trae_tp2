@@ -129,6 +129,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { getDailyStats } from '@/api/package'
+import { TrendCharts, PieChart, DataLine } from '@element-plus/icons-vue'
 
 const weeklyData = ref([
   { date: '01/09', count: 45 },
@@ -164,13 +165,27 @@ const getBarHeight = (count) => {
   return (count / 100) * 100
 }
 
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${month}/${day}`
+}
+
 const loadData = async () => {
   try {
     const res = await getDailyStats()
     if (res && Array.isArray(res)) {
-      weeklyData.value = res
-    } else if (res && res.dailyStats) {
-      weeklyData.value = res.dailyStats
+      weeklyData.value = res.map(item => ({
+        date: formatDate(item.date),
+        count: Number(item.count)
+      }))
+    } else if (res && res.dailyStats && Array.isArray(res.dailyStats)) {
+      weeklyData.value = res.dailyStats.map(item => ({
+        date: formatDate(item.date),
+        count: Number(item.count)
+      }))
     }
   } catch (e) {
   }
