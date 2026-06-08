@@ -32,7 +32,7 @@ public class Member {
     protected void onCreate() {
         createTime = LocalDateTime.now();
         if (discount == null) {
-            discount = BigDecimal.TEN;
+            discount = new BigDecimal("100");
         }
     }
 }

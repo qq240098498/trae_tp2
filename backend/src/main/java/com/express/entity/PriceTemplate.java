@@ -1,5 +1,7 @@
 package com.express.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import javax.persistence.*;
 import lombok.Data;
 import java.time.LocalDateTime;
@@ -7,6 +9,7 @@ import java.time.LocalDateTime;
 @Data
 @Entity
 @Table(name = "price_templates")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class PriceTemplate {
 
     @Id
@@ -18,8 +21,9 @@ public class PriceTemplate {
 
     private String description;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "company_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private ExpressCompany company;
 
     private Boolean isDefault = false;

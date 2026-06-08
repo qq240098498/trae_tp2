@@ -1,5 +1,7 @@
 package com.express.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import javax.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -8,14 +10,16 @@ import java.time.LocalDateTime;
 @Data
 @Entity
 @Table(name = "price_rules")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class PriceRule {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "template_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private PriceTemplate template;
 
     @Column(nullable = false)
