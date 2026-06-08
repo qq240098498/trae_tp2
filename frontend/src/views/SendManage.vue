@@ -16,6 +16,11 @@
         <el-table-column prop="receiverPhone" label="收件电话" width="130" />
         <el-table-column prop="address" label="收件地址" show-overflow-tooltip />
         <el-table-column prop="weight" label="重量(kg)" width="100" />
+        <el-table-column label="快递公司" width="120">
+          <template #default="{ row }">
+            {{ row.company?.name || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column label="原始运费" width="100">
           <template #default="{ row }">
             {{ row.originalFreight != null ? '¥' + row.originalFreight : '-' }}

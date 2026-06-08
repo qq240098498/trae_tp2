@@ -29,16 +29,14 @@
             placeholder="请选择快递公司"
             size="large"
             style="width: 100%"
+            filterable
           >
-            <el-option label="顺丰速运" value="顺丰" />
-            <el-option label="圆通速递" value="圆通" />
-            <el-option label="中通快递" value="中通" />
-            <el-option label="申通快递" value="申通" />
-            <el-option label="韵达快递" value="韵达" />
-            <el-option label="极兔速递" value="极兔" />
-            <el-option label="京东物流" value="京东" />
-            <el-option label="邮政EMS" value="邮政" />
-            <el-option label="其他" value="其他" />
+            <el-option
+              v-for="c in companies"
+              :key="c.id"
+              :label="c.name"
+              :value="c.name"
+            />
           </el-select>
         </el-form-item>
 
@@ -99,14 +97,16 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { createPackage } from '@/api/package'
+import { getCompanies } from '@/api/pricing'
 
 const formRef = ref(null)
 const loading = ref(false)
 const showResult = ref(false)
 const generatedCode = ref('')
+const companies = ref([])
 
 const form = reactive({
   trackingNumber: '',
@@ -171,6 +171,19 @@ const handleReset = () => {
   }
   showResult.value = false
 }
+
+const loadCompanies = async () => {
+  try {
+    const res = await getCompanies({ enabled: true })
+    if (Array.isArray(res)) {
+      companies.value = res
+    }
+  } catch (e) {}
+}
+
+onMounted(() => {
+  loadCompanies()
+})
 </script>
 
 <style scoped>

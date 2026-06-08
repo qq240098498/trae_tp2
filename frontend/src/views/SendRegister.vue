@@ -12,7 +12,7 @@
         ref="formRef"
         :model="form"
         :rules="rules"
-        label-width="100px"
+        label-width="110px"
         style="max-width: 700px; margin: 0 auto;"
       >
         <el-divider content-position="left">会员信息</el-divider>
@@ -91,7 +91,46 @@
           />
         </el-form-item>
 
-        <el-divider content-position="left">包裹信息</el-divider>
+        <el-divider content-position="left">包裹与运费信息</el-divider>
+
+        <el-form-item label="快递公司" prop="companyId">
+          <el-select
+            v-model="form.companyId"
+            placeholder="请选择快递公司"
+            size="large"
+            style="width: 100%"
+            filterable
+            @change="handleCompanyChange"
+          >
+            <el-option
+              v-for="c in companies"
+              :key="c.id"
+              :label="c.name"
+              :value="c.id"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="价格模板" v-if="form.companyId">
+          <el-select
+            v-model="form.templateId"
+            placeholder="请选择价格模板"
+            size="large"
+            style="width: 100%"
+            clearable
+            @change="calculatePrice"
+          >
+            <el-option
+              v-for="t in templates"
+              :key="t.id"
+              :label="t.name + (t.isDefault ? '（默认）' : '')"
+              :value="t.id"
+            />
+          </el-select>
+          <div style="color: #909399; font-size: 12px; margin-top: 4px">
+            不选则使用该快递公司的默认模板
+          </div>
+        </el-form-item>
 
         <el-form-item label="物品重量(kg)" prop="weight">
           <el-input-number
@@ -101,6 +140,7 @@
             :step="0.1"
             size="large"
             style="width: 100%"
+            @change="calculatePrice"
           />
         </el-form-item>
 
@@ -118,6 +158,28 @@
             <el-option label="文件资料" value="文件资料" />
             <el-option label="其他" value="其他" />
           </el-select>
+        </el-form-item>
+
+        <el-form-item label="运费预览" v-if="priceInfo.originalFreight !== null">
+          <div class="price-preview">
+            <div class="price-row">
+              <span>原始运费：</span>
+              <span class="price-value">¥{{ priceInfo.originalFreight }}</span>
+            </div>
+            <div class="price-row" v-if="selectedMember && selectedMember.discount < 100">
+              <span>会员折扣：</span>
+              <el-tag type="danger" size="small">{{ selectedMember.discount }}%（{{ discountText }}）</el-tag>
+            </div>
+            <div class="price-row" v-if="selectedMember && selectedMember.discount < 100">
+              <span>优惠金额：</span>
+              <span class="price-save">-¥{{ priceInfo.discountAmount }}</span>
+            </div>
+            <el-divider style="margin: 8px 0" />
+            <div class="price-row">
+              <span class="price-final-label">实付运费：</span>
+              <span class="price-final">¥{{ priceInfo.finalFreight }}</span>
+            </div>
+          </div>
         </el-form-item>
 
         <el-form-item label="备注">
@@ -145,16 +207,25 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { createShipment } from '@/api/package'
 import { getMembers } from '@/api/member'
+import { getCompanies, getTemplates, calculatePrice as apiCalculatePrice } from '@/api/pricing'
 
 const formRef = ref(null)
 const loading = ref(false)
 const memberLoading = ref(false)
 const memberOptions = ref([])
 const selectedMember = ref(null)
+const companies = ref([])
+const templates = ref([])
+
+const priceInfo = reactive({
+  originalFreight: null,
+  discountAmount: null,
+  finalFreight: null
+})
 
 const form = reactive({
   memberId: null,
@@ -163,6 +234,8 @@ const form = reactive({
   receiverName: '',
   receiverPhone: '',
   address: '',
+  companyId: null,
+  templateId: null,
   weight: 1,
   itemType: '',
   remark: ''
@@ -194,9 +267,79 @@ const rules = {
     { required: true, message: '请输入收件地址', trigger: 'blur' },
     { min: 10, message: '请输入详细地址', trigger: 'blur' }
   ],
+  companyId: [
+    { required: true, message: '请选择快递公司', trigger: 'change' }
+  ],
   weight: [
     { required: true, message: '请输入物品重量', trigger: 'blur' }
   ]
+}
+
+const loadCompanies = async () => {
+  try {
+    const res = await getCompanies({ enabled: true })
+    if (Array.isArray(res)) {
+      companies.value = res
+    }
+  } catch (e) {}
+}
+
+const handleCompanyChange = async (companyId) => {
+  form.templateId = null
+  templates.value = []
+  priceInfo.originalFreight = null
+  priceInfo.discountAmount = null
+  priceInfo.finalFreight = null
+
+  if (companyId) {
+    try {
+      const res = await getTemplates({ companyId, enabled: true })
+      if (Array.isArray(res)) {
+        templates.value = res
+        const defaultTpl = res.find(t => t.isDefault)
+        if (defaultTpl) {
+          form.templateId = defaultTpl.id
+        }
+      }
+    } catch (e) {}
+    calculatePrice()
+  }
+}
+
+const calculatePrice = async () => {
+  if (!form.companyId || !form.weight || form.weight <= 0) {
+    priceInfo.originalFreight = null
+    priceInfo.discountAmount = null
+    priceInfo.finalFreight = null
+    return
+  }
+
+  try {
+    const data = {
+      companyId: form.companyId,
+      weight: form.weight
+    }
+    if (form.templateId) {
+      data.templateId = form.templateId
+    }
+    const res = await apiCalculatePrice(data)
+    const original = parseFloat(res.totalPrice)
+    priceInfo.originalFreight = original.toFixed(2)
+
+    if (selectedMember.value && selectedMember.value.discount && selectedMember.value.discount < 100) {
+      const discountRate = selectedMember.value.discount / 100
+      const finalPrice = original * discountRate
+      priceInfo.discountAmount = (original - finalPrice).toFixed(2)
+      priceInfo.finalFreight = finalPrice.toFixed(2)
+    } else {
+      priceInfo.discountAmount = null
+      priceInfo.finalFreight = original.toFixed(2)
+    }
+  } catch (e) {
+    priceInfo.originalFreight = null
+    priceInfo.discountAmount = null
+    priceInfo.finalFreight = null
+  }
 }
 
 const searchMembers = async (query) => {
@@ -228,11 +371,12 @@ const handleMemberChange = (memberId) => {
   } else {
     selectedMember.value = null
   }
+  calculatePrice()
 }
 
 const handleSubmit = async () => {
   if (!formRef.value) return
-  
+
   await formRef.value.validate(async (valid) => {
     if (valid) {
       loading.value = true
@@ -241,8 +385,7 @@ const handleSubmit = async () => {
         ElMessage.success('代寄件登记成功')
         handleReset()
       } catch (e) {
-        ElMessage.success('代寄件登记成功')
-        handleReset()
+        ElMessage.error(e.response?.data?.message || '代寄件登记失败')
       } finally {
         loading.value = false
       }
@@ -255,12 +398,22 @@ const handleReset = () => {
     formRef.value.resetFields()
   }
   form.memberId = null
+  form.companyId = null
+  form.templateId = null
   form.weight = 1
   form.itemType = ''
   form.remark = ''
   selectedMember.value = null
   memberOptions.value = []
+  templates.value = []
+  priceInfo.originalFreight = null
+  priceInfo.discountAmount = null
+  priceInfo.finalFreight = null
 }
+
+onMounted(() => {
+  loadCompanies()
+})
 </script>
 
 <style scoped>
@@ -274,5 +427,44 @@ const handleReset = () => {
   gap: 8px;
   font-size: 16px;
   font-weight: 500;
+}
+
+.price-preview {
+  width: 100%;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-radius: 6px;
+  border: 1px solid #e4e7ed;
+}
+
+.price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 4px 0;
+  font-size: 14px;
+  color: #606266;
+}
+
+.price-value {
+  font-weight: 500;
+  color: #303133;
+}
+
+.price-save {
+  font-weight: 500;
+  color: #67c23a;
+}
+
+.price-final-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.price-final {
+  font-size: 22px;
+  font-weight: bold;
+  color: #f56c6c;
 }
 </style>
