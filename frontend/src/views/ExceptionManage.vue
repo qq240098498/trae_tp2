@@ -128,10 +128,16 @@
           <el-input v-model="createForm.packageId" placeholder="输入单号后自动绑定" disabled />
         </el-form-item>
         <el-form-item v-if="bindPackageInfo" label="包裹信息">
-          <div class="bind-info">
+          <div class="bind-info bind-success">
             <span>收件人: {{ bindPackageInfo.receiverName }}</span>
             <span>手机号: {{ bindPackageInfo.receiverPhone }}</span>
             <span>货架: {{ bindPackageInfo.shelfLocation || '-' }}</span>
+          </div>
+        </el-form-item>
+        <el-form-item v-if="createForm.trackingNumber && !createForm.packageId" label="包裹信息">
+          <div class="bind-info bind-fail">
+            <el-icon><WarningFilled /></el-icon>
+            <span>未找到该快递单号对应的入库包裹</span>
           </div>
         </el-form-item>
         <el-form-item label="异常类型" prop="exceptionType">
@@ -317,8 +323,19 @@ const compensateForm = reactive({
   handleRemark: ''
 })
 
+const validatePackageBind = (rule, value, callback) => {
+  if (!createForm.packageId) {
+    callback(new Error('未找到对应入库包裹，请确认快递单号'))
+  } else {
+    callback()
+  }
+}
+
 const createRules = {
-  trackingNumber: [{ required: true, message: '请输入快递单号', trigger: 'blur' }],
+  trackingNumber: [
+    { required: true, message: '请输入快递单号', trigger: 'blur' },
+    { validator: validatePackageBind, trigger: 'blur' }
+  ],
   exceptionType: [{ required: true, message: '请选择异常类型', trigger: 'change' }],
   description: [{ required: true, message: '请输入异常描述', trigger: 'blur' }],
   reporter: [{ required: true, message: '请输入登记人', trigger: 'blur' }]
@@ -378,8 +395,12 @@ const handleTrackingNumberBlur = async () => {
         receiverPhone: pkg.receiverPhone,
         shelfLocation: pkg.shelfLocation
       }
+    } else {
+      ElMessage.warning('未找到该快递单号对应的入库包裹，请确认单号是否正确')
     }
-  } catch (e) {}
+  } catch (e) {
+    ElMessage.warning('查询包裹信息失败，请确认单号是否正确')
+  }
 }
 
 const handleExceptionTypeChange = (val) => {
@@ -442,6 +463,10 @@ const handleCreate = () => {
 
 const submitCreate = async () => {
   if (!createFormRef.value) return
+  if (!createForm.packageId) {
+    ElMessage.warning('未找到对应入库包裹，无法登记异常')
+    return
+  }
   await createFormRef.value.validate()
   submitLoading.value = true
   try {
@@ -453,7 +478,8 @@ const submitCreate = async () => {
     createDialogVisible.value = false
     loadData()
   } catch (e) {
-    ElMessage.error('登记失败: ' + (e.message || '未知错误'))
+    const msg = e?.response?.data?.message || e.message || '未知错误'
+    ElMessage.error('登记失败: ' + msg)
   } finally {
     submitLoading.value = false
   }
@@ -579,6 +605,16 @@ onMounted(() => {
   gap: 16px;
   color: #606266;
   font-size: 13px;
+}
+
+.bind-success {
+  color: #67c23a;
+}
+
+.bind-fail {
+  color: #f56c6c;
+  align-items: center;
+  gap: 6px;
 }
 
 .standard-hint {
