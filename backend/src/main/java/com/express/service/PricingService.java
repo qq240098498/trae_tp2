@@ -48,7 +48,14 @@ public class PricingService {
         PriceRule rule = ruleRepository.findMatchingRule(template.getId(), request.getWeight())
                 .orElseThrow(() -> new EntityNotFoundException("没有匹配的价格规则，请检查重量范围"));
 
-        BigDecimal basePrice = rule.getBasePrice();
+        BigDecimal basePrice;
+        if (rule.getPricePerKg() != null && rule.getPricePerKg().compareTo(BigDecimal.ZERO) > 0) {
+            basePrice = rule.getPricePerKg().multiply(BigDecimal.valueOf(request.getWeight()))
+                    .setScale(2, RoundingMode.HALF_UP);
+        } else {
+            basePrice = rule.getBasePrice();
+        }
+
         BigDecimal additionalPrice = BigDecimal.ZERO;
 
         if (rule.getAdditionalPrice() != null && rule.getAdditionalWeightStep() != null
@@ -63,8 +70,14 @@ public class PricingService {
 
         BigDecimal totalPrice = basePrice.add(additionalPrice).setScale(2, RoundingMode.HALF_UP);
 
+        BigDecimal originalPrice = totalPrice;
+        if (rule.getOriginalPrice() != null && rule.getOriginalPrice().compareTo(BigDecimal.ZERO) > 0) {
+            originalPrice = rule.getOriginalPrice().add(additionalPrice).setScale(2, RoundingMode.HALF_UP);
+        }
+
         return new PriceCalculateResponse(
                 totalPrice,
+                originalPrice,
                 basePrice,
                 additionalPrice,
                 request.getWeight(),
@@ -221,6 +234,8 @@ public class PricingService {
         rule.setMinWeight(request.getMinWeight());
         rule.setMaxWeight(request.getMaxWeight());
         rule.setBasePrice(request.getBasePrice());
+        rule.setOriginalPrice(request.getOriginalPrice());
+        rule.setPricePerKg(request.getPricePerKg());
         rule.setAdditionalPrice(request.getAdditionalPrice());
         rule.setAdditionalWeightStep(request.getAdditionalWeightStep());
         rule.setEnabled(request.getEnabled() != null ? request.getEnabled() : true);
@@ -235,6 +250,8 @@ public class PricingService {
         if (request.getMinWeight() != null) rule.setMinWeight(request.getMinWeight());
         if (request.getMaxWeight() != null) rule.setMaxWeight(request.getMaxWeight());
         if (request.getBasePrice() != null) rule.setBasePrice(request.getBasePrice());
+        if (request.getOriginalPrice() != null) rule.setOriginalPrice(request.getOriginalPrice());
+        if (request.getPricePerKg() != null) rule.setPricePerKg(request.getPricePerKg());
         if (request.getAdditionalPrice() != null) rule.setAdditionalPrice(request.getAdditionalPrice());
         if (request.getAdditionalWeightStep() != null) rule.setAdditionalWeightStep(request.getAdditionalWeightStep());
         if (request.getEnabled() != null) rule.setEnabled(request.getEnabled());

@@ -160,11 +160,15 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="运费预览" v-if="priceInfo.originalFreight !== null">
+        <el-form-item label="运费预览" v-if="priceInfo.sellingFreight !== null">
           <div class="price-preview">
+            <div class="price-row" v-if="priceInfo.originalFreight && priceInfo.originalFreight !== priceInfo.sellingFreight">
+              <span>标价/原价：</span>
+              <span class="price-original">¥{{ priceInfo.originalFreight }}</span>
+            </div>
             <div class="price-row">
-              <span>原始运费：</span>
-              <span class="price-value">¥{{ priceInfo.originalFreight }}</span>
+              <span>计算运费：</span>
+              <span class="price-value">¥{{ priceInfo.sellingFreight }}</span>
             </div>
             <div class="price-row" v-if="selectedMember && selectedMember.discount < 100">
               <span>会员折扣：</span>
@@ -223,6 +227,7 @@ const templates = ref([])
 
 const priceInfo = reactive({
   originalFreight: null,
+  sellingFreight: null,
   discountAmount: null,
   finalFreight: null
 })
@@ -309,6 +314,7 @@ const handleCompanyChange = async (companyId) => {
 const calculatePrice = async () => {
   if (!form.companyId || !form.weight || form.weight <= 0) {
     priceInfo.originalFreight = null
+    priceInfo.sellingFreight = null
     priceInfo.discountAmount = null
     priceInfo.finalFreight = null
     return
@@ -323,20 +329,23 @@ const calculatePrice = async () => {
       data.templateId = form.templateId
     }
     const res = await apiCalculatePrice(data)
-    const original = parseFloat(res.totalPrice)
+    const selling = parseFloat(res.totalPrice)
+    const original = res.originalPrice ? parseFloat(res.originalPrice) : selling
     priceInfo.originalFreight = original.toFixed(2)
+    priceInfo.sellingFreight = selling.toFixed(2)
 
     if (selectedMember.value && selectedMember.value.discount && selectedMember.value.discount < 100) {
       const discountRate = selectedMember.value.discount / 100
-      const finalPrice = original * discountRate
-      priceInfo.discountAmount = (original - finalPrice).toFixed(2)
+      const finalPrice = selling * discountRate
+      priceInfo.discountAmount = (selling - finalPrice).toFixed(2)
       priceInfo.finalFreight = finalPrice.toFixed(2)
     } else {
       priceInfo.discountAmount = null
-      priceInfo.finalFreight = original.toFixed(2)
+      priceInfo.finalFreight = selling.toFixed(2)
     }
   } catch (e) {
     priceInfo.originalFreight = null
+    priceInfo.sellingFreight = null
     priceInfo.discountAmount = null
     priceInfo.finalFreight = null
   }
@@ -407,6 +416,7 @@ const handleReset = () => {
   memberOptions.value = []
   templates.value = []
   priceInfo.originalFreight = null
+  priceInfo.sellingFreight = null
   priceInfo.discountAmount = null
   priceInfo.finalFreight = null
 }
@@ -444,6 +454,12 @@ onMounted(() => {
   margin: 4px 0;
   font-size: 14px;
   color: #606266;
+}
+
+.price-original {
+  font-weight: 500;
+  color: #909399;
+  text-decoration: line-through;
 }
 
 .price-value {

@@ -28,6 +28,12 @@ public class PriceRule {
     private BigDecimal basePrice;
 
     @Column(precision = 10, scale = 2)
+    private BigDecimal originalPrice;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal pricePerKg;
+
+    @Column(precision = 10, scale = 2)
     private BigDecimal additionalPrice;
 
     private Double additionalWeightStep;

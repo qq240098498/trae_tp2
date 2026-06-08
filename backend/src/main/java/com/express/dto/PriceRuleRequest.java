@@ -9,6 +9,8 @@ public class PriceRuleRequest {
     private Double minWeight;
     private Double maxWeight;
     private BigDecimal basePrice;
+    private BigDecimal originalPrice;
+    private BigDecimal pricePerKg;
     private BigDecimal additionalPrice;
     private Double additionalWeightStep;
     private Boolean enabled;

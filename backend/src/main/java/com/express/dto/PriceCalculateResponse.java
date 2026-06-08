@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class PriceCalculateResponse {
     private BigDecimal totalPrice;
+    private BigDecimal originalPrice;
     private BigDecimal basePrice;
     private BigDecimal additionalPrice;
     private Double weight;

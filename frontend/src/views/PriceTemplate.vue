@@ -98,6 +98,18 @@
             <span style="color: #f56c6c; font-weight: 500">¥{{ row.basePrice }}</span>
           </template>
         </el-table-column>
+        <el-table-column label="原始价格(元)" width="120">
+          <template #default="{ row }">
+            <span v-if="row.originalPrice" style="color: #909399; text-decoration: line-through">¥{{ row.originalPrice }}</span>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="公斤价(元/kg)" width="130">
+          <template #default="{ row }">
+            <span v-if="row.pricePerKg" style="color: #e6a23c; font-weight: 500">¥{{ row.pricePerKg }}/kg</span>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="续重费用(元)" width="120">
           <template #default="{ row }">
             {{ row.additionalPrice ? '¥' + row.additionalPrice : '-' }}
@@ -173,7 +185,7 @@
       width="500px"
       @close="resetRuleForm"
     >
-      <el-form :model="ruleForm" :rules="ruleRules" ref="ruleFormRef" label-width="110px">
+      <el-form :model="ruleForm" :rules="ruleRules" ref="ruleFormRef" label-width="120px">
         <el-form-item label="最小重量(kg)" prop="minWeight">
           <el-input-number v-model="ruleForm.minWeight" :min="0" :precision="2" :step="0.5" style="width: 100%" />
         </el-form-item>
@@ -183,6 +195,15 @@
         </el-form-item>
         <el-form-item label="基础运费(元)" prop="basePrice">
           <el-input-number v-model="ruleForm.basePrice" :min="0" :precision="2" :step="1" style="width: 100%" />
+          <div style="color: #909399; font-size: 12px; margin-top: 4px">固定基础运费，填写公斤价后可作为最低收费</div>
+        </el-form-item>
+        <el-form-item label="原始价格(元)" prop="originalPrice">
+          <el-input-number v-model="ruleForm.originalPrice" :min="0" :precision="2" :step="1" style="width: 100%" />
+          <div style="color: #909399; font-size: 12px; margin-top: 4px">标价/原价，用于展示"原价"与会员折扣对比</div>
+        </el-form-item>
+        <el-form-item label="公斤价(元/kg)" prop="pricePerKg">
+          <el-input-number v-model="ruleForm.pricePerKg" :min="0" :precision="2" :step="0.5" style="width: 100%" />
+          <div style="color: #909399; font-size: 12px; margin-top: 4px">按公斤计价，填写后运费=重量×公斤价；不填则使用基础运费</div>
         </el-form-item>
         <el-form-item label="续重费用(元)" prop="additionalPrice">
           <el-input-number v-model="ruleForm.additionalPrice" :min="0" :precision="2" :step="1" style="width: 100%" />
@@ -251,6 +272,8 @@ const ruleForm = reactive({
   minWeight: 0,
   maxWeight: 1,
   basePrice: 0,
+  originalPrice: null,
+  pricePerKg: null,
   additionalPrice: null,
   additionalWeightStep: 1,
   enabled: true
@@ -408,6 +431,8 @@ const handleEditRule = (row) => {
   ruleForm.minWeight = row.minWeight
   ruleForm.maxWeight = row.maxWeight
   ruleForm.basePrice = row.basePrice
+  ruleForm.originalPrice = row.originalPrice || null
+  ruleForm.pricePerKg = row.pricePerKg || null
   ruleForm.additionalPrice = row.additionalPrice
   ruleForm.additionalWeightStep = row.additionalWeightStep
   ruleForm.enabled = row.enabled
@@ -450,6 +475,8 @@ const resetRuleForm = () => {
   ruleForm.minWeight = 0
   ruleForm.maxWeight = 1
   ruleForm.basePrice = 0
+  ruleForm.originalPrice = null
+  ruleForm.pricePerKg = null
   ruleForm.additionalPrice = null
   ruleForm.additionalWeightStep = 1
   ruleForm.enabled = true

@@ -48,17 +48,22 @@ public class ShipmentService {
             calculateRequest.setWeight(request.getWeight());
 
             PriceCalculateResponse priceResponse = pricingService.calculatePrice(calculateRequest);
-            BigDecimal originalFreight = priceResponse.getTotalPrice();
+            BigDecimal originalFreight = priceResponse.getOriginalPrice() != null
+                    ? priceResponse.getOriginalPrice()
+                    : priceResponse.getTotalPrice();
             shipment.setOriginalFreight(originalFreight);
 
-            if (shipment.getMember() != null && shipment.getMember().getDiscount() != null) {
+            BigDecimal sellingFreight = priceResponse.getTotalPrice();
+
+            if (shipment.getMember() != null && shipment.getMember().getDiscount() != null
+                    && shipment.getMember().getDiscount().compareTo(new BigDecimal("100")) < 0) {
                 BigDecimal discount = shipment.getMember().getDiscount();
                 shipment.setDiscount(discount);
                 BigDecimal discountRate = discount.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
-                BigDecimal discountedFreight = originalFreight.multiply(discountRate).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal discountedFreight = sellingFreight.multiply(discountRate).setScale(2, RoundingMode.HALF_UP);
                 shipment.setFreight(discountedFreight);
             } else {
-                shipment.setFreight(originalFreight);
+                shipment.setFreight(sellingFreight);
             }
 
             if (request.getTemplateId() != null) {
