@@ -45,6 +45,10 @@
           <el-icon><List /></el-icon>
           <span>代寄件管理</span>
         </el-menu-item>
+        <el-menu-item index="/member-manage">
+          <el-icon><User /></el-icon>
+          <span>会员管理</span>
+        </el-menu-item>
         <el-sub-menu index="pricing">
           <template #title>
             <el-icon><Money /></el-icon>

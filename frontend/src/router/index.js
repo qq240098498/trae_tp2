@@ -56,6 +56,12 @@ const routes = [
         meta: { title: '代寄件管理' }
       },
       {
+        path: 'member-manage',
+        name: 'MemberManage',
+        component: () => import('@/views/MemberManage.vue'),
+        meta: { title: '会员管理' }
+      },
+      {
         path: 'express-company',
         name: 'ExpressCompany',
         component: () => import('@/views/ExpressCompany.vue'),

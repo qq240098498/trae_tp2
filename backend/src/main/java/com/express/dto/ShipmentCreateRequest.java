@@ -12,4 +12,5 @@ public class ShipmentCreateRequest {
     private Double weight;
     private Long companyId;
     private Long templateId;
+    private Long memberId;
 }

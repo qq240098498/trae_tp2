@@ -39,6 +39,16 @@ public class Shipment {
     @JoinColumn(name = "template_id")
     private PriceTemplate template;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id")
+    private Member member;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal originalFreight;
+
+    @Column(precision = 5, scale = 2)
+    private BigDecimal discount;
+
     @Column(precision = 10, scale = 2)
     private BigDecimal freight;
 

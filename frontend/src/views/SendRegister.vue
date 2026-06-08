@@ -15,6 +15,36 @@
         label-width="100px"
         style="max-width: 700px; margin: 0 auto;"
       >
+        <el-divider content-position="left">会员信息</el-divider>
+
+        <el-form-item label="选择会员">
+          <el-select
+            v-model="form.memberId"
+            placeholder="请选择会员（可选）"
+            clearable
+            filterable
+            remote
+            :remote-method="searchMembers"
+            :loading="memberLoading"
+            size="large"
+            style="width: 100%"
+            @change="handleMemberChange"
+          >
+            <el-option
+              v-for="m in memberOptions"
+              :key="m.id"
+              :label="`${m.name} (${m.phone})`"
+              :value="m.id"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="会员折扣" v-if="selectedMember">
+          <el-tag type="danger" size="large">
+            {{ selectedMember.discount }}%（{{ discountText }}）
+          </el-tag>
+        </el-form-item>
+
         <el-divider content-position="left">寄件人信息</el-divider>
 
         <el-form-item label="寄件人姓名" prop="senderName">
@@ -115,14 +145,19 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { createShipment } from '@/api/package'
+import { getMembers } from '@/api/member'
 
 const formRef = ref(null)
 const loading = ref(false)
+const memberLoading = ref(false)
+const memberOptions = ref([])
+const selectedMember = ref(null)
 
 const form = reactive({
+  memberId: null,
   senderName: '',
   senderPhone: '',
   receiverName: '',
@@ -131,6 +166,13 @@ const form = reactive({
   weight: 1,
   itemType: '',
   remark: ''
+})
+
+const discountText = computed(() => {
+  if (!selectedMember.value || !selectedMember.value.discount) return '无折扣'
+  const d = selectedMember.value.discount
+  if (d >= 100) return '无折扣'
+  return `${(d / 10).toFixed(1)}折`
 })
 
 const rules = {
@@ -157,6 +199,37 @@ const rules = {
   ]
 }
 
+const searchMembers = async (query) => {
+  if (!query) {
+    memberOptions.value = []
+    return
+  }
+  memberLoading.value = true
+  try {
+    const res = await getMembers({ name: query })
+    if (Array.isArray(res)) {
+      memberOptions.value = res
+    }
+  } catch (e) {
+    memberOptions.value = []
+  } finally {
+    memberLoading.value = false
+  }
+}
+
+const handleMemberChange = (memberId) => {
+  if (memberId) {
+    const member = memberOptions.value.find(m => m.id === memberId)
+    if (member) {
+      selectedMember.value = member
+      form.senderName = member.name
+      form.senderPhone = member.phone
+    }
+  } else {
+    selectedMember.value = null
+  }
+}
+
 const handleSubmit = async () => {
   if (!formRef.value) return
   
@@ -181,8 +254,12 @@ const handleReset = () => {
   if (formRef.value) {
     formRef.value.resetFields()
   }
+  form.memberId = null
   form.weight = 1
   form.itemType = ''
+  form.remark = ''
+  selectedMember.value = null
+  memberOptions.value = []
 }
 </script>
 

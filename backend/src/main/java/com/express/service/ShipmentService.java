@@ -4,12 +4,15 @@ import com.express.dto.PriceCalculateRequest;
 import com.express.dto.PriceCalculateResponse;
 import com.express.dto.ShipmentCreateRequest;
 import com.express.entity.*;
+import com.express.repository.MemberRepository;
 import com.express.repository.ShipmentRepository;
 import javax.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -19,6 +22,7 @@ public class ShipmentService {
 
     private final ShipmentRepository shipmentRepository;
     private final PricingService pricingService;
+    private final MemberRepository memberRepository;
 
     @Transactional
     public Shipment createShipment(ShipmentCreateRequest request) {
@@ -31,6 +35,12 @@ public class ShipmentService {
         shipment.setWeight(request.getWeight());
         shipment.setStatus(ShipmentStatus.PENDING);
 
+        if (request.getMemberId() != null) {
+            Member member = memberRepository.findById(request.getMemberId())
+                    .orElseThrow(() -> new EntityNotFoundException("会员不存在: " + request.getMemberId()));
+            shipment.setMember(member);
+        }
+
         if (request.getWeight() != null && (request.getCompanyId() != null || request.getTemplateId() != null)) {
             PriceCalculateRequest calculateRequest = new PriceCalculateRequest();
             calculateRequest.setCompanyId(request.getCompanyId());
@@ -38,7 +48,18 @@ public class ShipmentService {
             calculateRequest.setWeight(request.getWeight());
 
             PriceCalculateResponse priceResponse = pricingService.calculatePrice(calculateRequest);
-            shipment.setFreight(priceResponse.getTotalPrice());
+            BigDecimal originalFreight = priceResponse.getTotalPrice();
+            shipment.setOriginalFreight(originalFreight);
+
+            if (shipment.getMember() != null && shipment.getMember().getDiscount() != null) {
+                BigDecimal discount = shipment.getMember().getDiscount();
+                shipment.setDiscount(discount);
+                BigDecimal discountRate = discount.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
+                BigDecimal discountedFreight = originalFreight.multiply(discountRate).setScale(2, RoundingMode.HALF_UP);
+                shipment.setFreight(discountedFreight);
+            } else {
+                shipment.setFreight(originalFreight);
+            }
 
             if (request.getTemplateId() != null) {
                 PriceTemplate template = pricingService.getTemplateById(request.getTemplateId());

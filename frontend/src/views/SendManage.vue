@@ -16,6 +16,27 @@
         <el-table-column prop="receiverPhone" label="收件电话" width="130" />
         <el-table-column prop="address" label="收件地址" show-overflow-tooltip />
         <el-table-column prop="weight" label="重量(kg)" width="100" />
+        <el-table-column label="原始运费" width="100">
+          <template #default="{ row }">
+            {{ row.originalFreight != null ? '¥' + row.originalFreight : '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="折扣" width="80">
+          <template #default="{ row }">
+            <el-tag v-if="row.discount != null && row.discount < 100" type="danger" size="small">
+              {{ row.discount }}%
+            </el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="实付运费" width="100">
+          <template #default="{ row }">
+            <span v-if="row.freight != null" :style="{ color: row.discount != null && row.discount < 100 ? '#f56c6c' : '' }">
+              ¥{{ row.freight }}
+            </span>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="itemType" label="物品类型" width="100" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
