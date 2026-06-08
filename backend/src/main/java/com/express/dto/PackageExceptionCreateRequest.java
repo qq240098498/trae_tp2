@@ -9,7 +9,7 @@ public class PackageExceptionCreateRequest {
 
     private String trackingNumber;
 
-    private String orderNumber;
+    private String orderId;
 
     private String exceptionType;
 

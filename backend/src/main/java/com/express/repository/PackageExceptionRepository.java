@@ -21,6 +21,8 @@ public interface PackageExceptionRepository extends JpaRepository<PackageExcepti
 
     List<PackageException> findByStatusIn(List<ExceptionStatus> statuses);
 
+    List<PackageException> findByOrderId(String orderId);
+
     long countByStatus(ExceptionStatus status);
 
     long countByExceptionType(ExceptionType exceptionType);

@@ -46,6 +46,22 @@ export function compensate(data) {
   })
 }
 
+export function approve(data) {
+  return request({
+    url: '/exceptions/approve',
+    method: 'post',
+    data
+  })
+}
+
+export function payment(data) {
+  return request({
+    url: '/exceptions/payment',
+    method: 'post',
+    data
+  })
+}
+
 export function getCompensationList() {
   return request({
     url: '/exceptions/compensations',

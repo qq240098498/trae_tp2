@@ -18,6 +18,9 @@
         <el-form-item label="快递单号">
           <el-input v-model="queryForm.trackingNumber" placeholder="请输入快递单号" clearable />
         </el-form-item>
+        <el-form-item label="订单号">
+          <el-input v-model="queryForm.orderId" placeholder="请输入订单号" clearable />
+        </el-form-item>
         <el-form-item label="异常类型">
           <el-select v-model="queryForm.exceptionType" placeholder="全部类型" clearable style="width: 140px">
             <el-option label="破损" value="DAMAGED" />
@@ -29,7 +32,11 @@
           <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 140px">
             <el-option label="待处理" value="PENDING" />
             <el-option label="处理中" value="PROCESSING" />
-            <el-option label="已解决" value="RESOLVED" />
+            <el-option label="待审批" value="APPROVAL_PENDING" />
+            <el-option label="审批通过" value="APPROVED" />
+            <el-option label="审批驳回" value="REJECTED" />
+            <el-option label="待打款" value="PAYMENT_PENDING" />
+            <el-option label="已打款" value="PAID" />
             <el-option label="已关闭" value="CLOSED" />
           </el-select>
         </el-form-item>
@@ -47,8 +54,9 @@
 
       <el-table :data="tableData" border stripe v-loading="loading">
         <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="orderNumber" label="订单号" width="140" />
+        <el-table-column prop="orderId" label="订单号" width="140" />
         <el-table-column prop="trackingNumber" label="快递单号" width="160" />
+        <el-table-column prop="packageId" label="包裹ID" width="80" />
         <el-table-column prop="exceptionType" label="异常类型" width="100">
           <template #default="{ row }">
             <el-tag :type="getTypeTagType(row.exceptionType)" size="small">
@@ -56,9 +64,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="异常描述" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="reporter" label="登记人" width="100" />
-        <el-table-column prop="handler" label="处理人" width="100" />
+        <el-table-column prop="description" label="异常描述" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="reporter" label="登记人" width="80" />
+        <el-table-column prop="handler" label="处理人" width="80" />
         <el-table-column prop="status" label="处理状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusTagType(row.status)" size="small">
@@ -66,9 +74,13 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="登记时间" width="170" />
-        <el-table-column prop="updateTime" label="更新时间" width="170" />
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column prop="compensationAmount" label="补偿金额" width="100">
+          <template #default="{ row }">
+            <span v-if="row.compensationAmount != null" class="amount">¥{{ row.compensationAmount }}</span>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button
               v-if="row.status === 'PENDING'"
@@ -87,12 +99,36 @@
               补偿
             </el-button>
             <el-button
-              v-if="row.status === 'RESOLVED'"
+              v-if="row.status === 'APPROVAL_PENDING'"
+              type="primary"
+              size="small"
+              @click="handleApprove(row)"
+            >
+              审批
+            </el-button>
+            <el-button
+              v-if="row.status === 'APPROVED'"
+              type="success"
+              size="small"
+              @click="handlePayment(row)"
+            >
+              打款
+            </el-button>
+            <el-button
+              v-if="row.status === 'PAID'"
               type="info"
               size="small"
               @click="handleClose(row)"
             >
               关闭
+            </el-button>
+            <el-button
+              v-if="row.status === 'REJECTED'"
+              type="warning"
+              size="small"
+              @click="handleReprocess(row)"
+            >
+              重新处理
             </el-button>
             <el-button
               type="primary"
@@ -121,10 +157,7 @@
         <el-form-item label="快递单号" prop="trackingNumber">
           <el-input v-model="createForm.trackingNumber" placeholder="请输入快递单号" @blur="handleTrackingNumberBlur" />
         </el-form-item>
-        <el-form-item label="订单号">
-          <el-input v-model="createForm.orderNumber" placeholder="请输入订单号（可选）" />
-        </el-form-item>
-        <el-form-item label="包裹ID">
+        <el-form-item label="包裹ID" prop="packageId">
           <el-input v-model="createForm.packageId" placeholder="输入单号后自动绑定" disabled />
         </el-form-item>
         <el-form-item v-if="bindPackageInfo" label="包裹信息">
@@ -139,6 +172,9 @@
             <el-icon><WarningFilled /></el-icon>
             <span>未找到该快递单号对应的入库包裹</span>
           </div>
+        </el-form-item>
+        <el-form-item label="订单号" prop="orderId">
+          <el-input v-model="createForm.orderId" placeholder="请输入订单号（必填）" />
         </el-form-item>
         <el-form-item label="异常类型" prop="exceptionType">
           <el-select v-model="createForm.exceptionType" placeholder="请选择异常类型" style="width: 100%" @change="handleExceptionTypeChange">
@@ -171,6 +207,12 @@
         <el-form-item label="快递单号">
           <el-input :model-value="processForm.trackingNumber" disabled />
         </el-form-item>
+        <el-form-item label="订单号">
+          <el-input :model-value="processForm.orderId" disabled />
+        </el-form-item>
+        <el-form-item label="包裹ID">
+          <el-input :model-value="processForm.packageId" disabled />
+        </el-form-item>
         <el-form-item label="异常描述">
           <el-input :model-value="processForm.description" type="textarea" :rows="2" disabled />
         </el-form-item>
@@ -194,6 +236,9 @@
         </el-form-item>
         <el-form-item label="快递单号">
           <el-input :model-value="compensateForm.trackingNumber" disabled />
+        </el-form-item>
+        <el-form-item label="订单号">
+          <el-input :model-value="compensateForm.orderId" disabled />
         </el-form-item>
         <el-form-item label="异常类型">
           <el-tag :type="getTypeTagType(compensateForm.exceptionType)" size="small">
@@ -220,15 +265,88 @@
       </el-form>
       <template #footer>
         <el-button @click="compensateDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitCompensate" :loading="submitLoading">确认补偿</el-button>
+        <el-button type="primary" @click="submitCompensate" :loading="submitLoading">确认补偿（提交审批）</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="detailDialogVisible" title="异常详情" width="600px">
+    <el-dialog v-model="approveDialogVisible" title="审批补偿" width="550px" destroy-on-close>
+      <el-form :model="approveForm" label-width="100px" :rules="approveRules" ref="approveFormRef">
+        <el-form-item label="异常ID">
+          <el-input :model-value="approveForm.exceptionId" disabled />
+        </el-form-item>
+        <el-form-item label="快递单号">
+          <el-input :model-value="approveForm.trackingNumber" disabled />
+        </el-form-item>
+        <el-form-item label="订单号">
+          <el-input :model-value="approveForm.orderId" disabled />
+        </el-form-item>
+        <el-form-item label="补偿金额">
+          <span class="amount">¥{{ approveForm.compensationAmount }}</span>
+        </el-form-item>
+        <el-form-item label="补偿方式">
+          <el-tag type="success" size="small">{{ approveForm.compensationMethod }}</el-tag>
+        </el-form-item>
+        <el-form-item label="审批人" prop="approver">
+          <el-input v-model="approveForm.approver" placeholder="请输入审批人姓名" />
+        </el-form-item>
+        <el-form-item label="审批结果" prop="approved">
+          <el-radio-group v-model="approveForm.approved">
+            <el-radio :value="true">通过</el-radio>
+            <el-radio :value="false">驳回</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="审批备注">
+          <el-input v-model="approveForm.approvalRemark" type="textarea" :rows="3" placeholder="请输入审批备注" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="approveDialogVisible = false">取消</el-button>
+        <el-button type="danger" @click="submitApprove(false)" :loading="submitLoading">驳回</el-button>
+        <el-button type="success" @click="submitApprove(true)" :loading="submitLoading">审批通过</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="paymentDialogVisible" title="确认打款" width="550px" destroy-on-close>
+      <el-form :model="paymentForm" label-width="100px" :rules="paymentRules" ref="paymentFormRef">
+        <el-form-item label="异常ID">
+          <el-input :model-value="paymentForm.exceptionId" disabled />
+        </el-form-item>
+        <el-form-item label="快递单号">
+          <el-input :model-value="paymentForm.trackingNumber" disabled />
+        </el-form-item>
+        <el-form-item label="订单号">
+          <el-input :model-value="paymentForm.orderId" disabled />
+        </el-form-item>
+        <el-form-item label="补偿金额">
+          <span class="amount">¥{{ paymentForm.compensationAmount }}</span>
+        </el-form-item>
+        <el-form-item label="补偿方式">
+          <el-tag type="success" size="small">{{ paymentForm.compensationMethod }}</el-tag>
+        </el-form-item>
+        <el-form-item label="审批人">
+          {{ paymentForm.approver }}
+        </el-form-item>
+        <el-form-item label="审批时间">
+          {{ paymentForm.approvalTime }}
+        </el-form-item>
+        <el-form-item label="打款操作人" prop="paymentOperator">
+          <el-input v-model="paymentForm.paymentOperator" placeholder="请输入打款操作人姓名" />
+        </el-form-item>
+        <el-form-item label="打款备注">
+          <el-input v-model="paymentForm.paymentRemark" type="textarea" :rows="3" placeholder="请输入打款备注（如打款流水号等）" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="paymentDialogVisible = false">取消</el-button>
+        <el-button type="success" @click="submitPayment" :loading="submitLoading">确认打款</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="detailDialogVisible" title="异常详情" width="650px">
       <el-descriptions :column="2" border v-if="currentDetail">
         <el-descriptions-item label="异常ID">{{ currentDetail.id }}</el-descriptions-item>
         <el-descriptions-item label="快递单号">{{ currentDetail.trackingNumber }}</el-descriptions-item>
-        <el-descriptions-item label="订单号">{{ currentDetail.orderNumber || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="订单号">{{ currentDetail.orderId || '-' }}</el-descriptions-item>
         <el-descriptions-item label="包裹ID">{{ currentDetail.packageId }}</el-descriptions-item>
         <el-descriptions-item label="异常类型">
           <el-tag :type="getTypeTagType(currentDetail.exceptionType)" size="small">
@@ -248,7 +366,13 @@
         <el-descriptions-item label="处理备注" :span="2">{{ currentDetail.handleRemark || '-' }}</el-descriptions-item>
         <el-descriptions-item label="补偿金额">{{ currentDetail.compensationAmount != null ? '¥' + currentDetail.compensationAmount : '-' }}</el-descriptions-item>
         <el-descriptions-item label="补偿方式">{{ currentDetail.compensationMethod || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="补偿时间" :span="2">{{ currentDetail.compensationTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="补偿时间">{{ currentDetail.compensationTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="审批人">{{ currentDetail.approver || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="审批时间">{{ currentDetail.approvalTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="审批备注">{{ currentDetail.approvalRemark || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="打款操作人">{{ currentDetail.paymentOperator || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="打款时间">{{ currentDetail.paymentTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="打款备注" :span="2">{{ currentDetail.paymentRemark || '-' }}</el-descriptions-item>
       </el-descriptions>
       <template #footer>
         <el-button @click="detailDialogVisible = false">关闭</el-button>
@@ -260,7 +384,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { searchExceptions, createException, updateExceptionStatus, compensate, getCompensationStandardByType, getCompensationStandards } from '@/api/exception'
+import { searchExceptions, createException, updateExceptionStatus, compensate, approve, payment, getCompensationStandards } from '@/api/exception'
 import { searchPackages } from '@/api/package'
 
 const loading = ref(false)
@@ -268,6 +392,7 @@ const submitLoading = ref(false)
 
 const queryForm = reactive({
   trackingNumber: '',
+  orderId: '',
   exceptionType: '',
   status: ''
 })
@@ -283,10 +408,14 @@ const tableData = ref([])
 const createDialogVisible = ref(false)
 const processDialogVisible = ref(false)
 const compensateDialogVisible = ref(false)
+const approveDialogVisible = ref(false)
+const paymentDialogVisible = ref(false)
 const detailDialogVisible = ref(false)
 
 const createFormRef = ref(null)
 const compensateFormRef = ref(null)
+const approveFormRef = ref(null)
+const paymentFormRef = ref(null)
 
 const currentDetail = ref(null)
 
@@ -299,7 +428,7 @@ const standardMap = ref({})
 const createForm = reactive({
   packageId: '',
   trackingNumber: '',
-  orderNumber: '',
+  orderId: '',
   exceptionType: '',
   description: '',
   reporter: ''
@@ -308,6 +437,8 @@ const createForm = reactive({
 const processForm = reactive({
   id: '',
   trackingNumber: '',
+  orderId: '',
+  packageId: '',
   description: '',
   handler: '',
   handleRemark: ''
@@ -316,11 +447,35 @@ const processForm = reactive({
 const compensateForm = reactive({
   exceptionId: '',
   trackingNumber: '',
+  orderId: '',
   exceptionType: '',
   standardAmount: null,
   compensationAmount: 0,
   compensationMethod: '',
   handleRemark: ''
+})
+
+const approveForm = reactive({
+  exceptionId: '',
+  trackingNumber: '',
+  orderId: '',
+  compensationAmount: null,
+  compensationMethod: '',
+  approver: '',
+  approved: true,
+  approvalRemark: ''
+})
+
+const paymentForm = reactive({
+  exceptionId: '',
+  trackingNumber: '',
+  orderId: '',
+  compensationAmount: null,
+  compensationMethod: '',
+  approver: '',
+  approvalTime: '',
+  paymentOperator: '',
+  paymentRemark: ''
 })
 
 const validatePackageBind = (rule, value, callback) => {
@@ -336,6 +491,7 @@ const createRules = {
     { required: true, message: '请输入快递单号', trigger: 'blur' },
     { validator: validatePackageBind, trigger: 'blur' }
   ],
+  orderId: [{ required: true, message: '订单号不能为空，异常登记必须绑定订单', trigger: 'blur' }],
   exceptionType: [{ required: true, message: '请选择异常类型', trigger: 'change' }],
   description: [{ required: true, message: '请输入异常描述', trigger: 'blur' }],
   reporter: [{ required: true, message: '请输入登记人', trigger: 'blur' }]
@@ -344,6 +500,15 @@ const createRules = {
 const compensateRules = {
   compensationAmount: [{ required: true, message: '请输入补偿金额', trigger: 'blur' }],
   compensationMethod: [{ required: true, message: '请选择补偿方式', trigger: 'change' }]
+}
+
+const approveRules = {
+  approver: [{ required: true, message: '请输入审批人', trigger: 'blur' }],
+  approved: [{ required: true, message: '请选择审批结果', trigger: 'change' }]
+}
+
+const paymentRules = {
+  paymentOperator: [{ required: true, message: '请输入打款操作人', trigger: 'blur' }]
 }
 
 const getTypeText = (type) => {
@@ -357,12 +522,32 @@ const getTypeTagType = (type) => {
 }
 
 const getStatusText = (status) => {
-  const map = { 'PENDING': '待处理', 'PROCESSING': '处理中', 'RESOLVED': '已解决', 'CLOSED': '已关闭' }
+  const map = {
+    'PENDING': '待处理',
+    'PROCESSING': '处理中',
+    'COMPENSATION_PENDING': '待补偿',
+    'APPROVAL_PENDING': '待审批',
+    'APPROVED': '审批通过',
+    'REJECTED': '审批驳回',
+    'PAYMENT_PENDING': '待打款',
+    'PAID': '已打款',
+    'CLOSED': '已关闭'
+  }
   return map[status] || status
 }
 
 const getStatusTagType = (status) => {
-  const map = { 'PENDING': 'danger', 'PROCESSING': 'warning', 'RESOLVED': 'success', 'CLOSED': 'info' }
+  const map = {
+    'PENDING': 'danger',
+    'PROCESSING': 'warning',
+    'COMPENSATION_PENDING': 'warning',
+    'APPROVAL_PENDING': '',
+    'APPROVED': 'success',
+    'REJECTED': 'danger',
+    'PAYMENT_PENDING': '',
+    'PAID': 'success',
+    'CLOSED': 'info'
+  }
   return map[status] || 'info'
 }
 
@@ -442,6 +627,7 @@ const handleQuery = () => {
 
 const handleReset = () => {
   queryForm.trackingNumber = ''
+  queryForm.orderId = ''
   queryForm.exceptionType = ''
   queryForm.status = ''
   handleQuery()
@@ -451,7 +637,7 @@ const handleCreate = () => {
   Object.assign(createForm, {
     packageId: '',
     trackingNumber: '',
-    orderNumber: '',
+    orderId: '',
     exceptionType: '',
     description: '',
     reporter: ''
@@ -465,6 +651,10 @@ const submitCreate = async () => {
   if (!createFormRef.value) return
   if (!createForm.packageId) {
     ElMessage.warning('未找到对应入库包裹，无法登记异常')
+    return
+  }
+  if (!createForm.orderId) {
+    ElMessage.warning('订单号不能为空，异常登记必须绑定订单')
     return
   }
   await createFormRef.value.validate()
@@ -489,6 +679,8 @@ const handleProcess = (row) => {
   Object.assign(processForm, {
     id: row.id,
     trackingNumber: row.trackingNumber,
+    orderId: row.orderId,
+    packageId: row.packageId,
     description: row.description,
     handler: '',
     handleRemark: ''
@@ -519,6 +711,7 @@ const handleCompensate = (row) => {
   Object.assign(compensateForm, {
     exceptionId: row.id,
     trackingNumber: row.trackingNumber,
+    orderId: row.orderId,
     exceptionType: row.exceptionType,
     standardAmount: stdAmount,
     compensationAmount: stdAmount !== null ? stdAmount : 0,
@@ -539,11 +732,82 @@ const submitCompensate = async () => {
       compensationMethod: compensateForm.compensationMethod,
       handleRemark: compensateForm.handleRemark
     })
-    ElMessage.success('补偿成功')
+    ElMessage.success('补偿已提交，等待审批')
     compensateDialogVisible.value = false
     loadData()
   } catch (e) {
     ElMessage.error('补偿失败: ' + (e.message || '未知错误'))
+  } finally {
+    submitLoading.value = false
+  }
+}
+
+const handleApprove = (row) => {
+  Object.assign(approveForm, {
+    exceptionId: row.id,
+    trackingNumber: row.trackingNumber,
+    orderId: row.orderId,
+    compensationAmount: row.compensationAmount,
+    compensationMethod: row.compensationMethod,
+    approver: '',
+    approved: true,
+    approvalRemark: ''
+  })
+  approveDialogVisible.value = true
+}
+
+const submitApprove = async (isApproved) => {
+  if (!approveFormRef.value) return
+  approveForm.approved = isApproved
+  await approveFormRef.value.validate()
+  submitLoading.value = true
+  try {
+    await approve({
+      exceptionId: approveForm.exceptionId,
+      approved: approveForm.approved,
+      approver: approveForm.approver,
+      approvalRemark: approveForm.approvalRemark
+    })
+    ElMessage.success(isApproved ? '审批通过' : '已驳回')
+    approveDialogVisible.value = false
+    loadData()
+  } catch (e) {
+    ElMessage.error('审批失败: ' + (e.message || '未知错误'))
+  } finally {
+    submitLoading.value = false
+  }
+}
+
+const handlePayment = (row) => {
+  Object.assign(paymentForm, {
+    exceptionId: row.id,
+    trackingNumber: row.trackingNumber,
+    orderId: row.orderId,
+    compensationAmount: row.compensationAmount,
+    compensationMethod: row.compensationMethod,
+    approver: row.approver,
+    approvalTime: row.approvalTime,
+    paymentOperator: '',
+    paymentRemark: ''
+  })
+  paymentDialogVisible.value = true
+}
+
+const submitPayment = async () => {
+  if (!paymentFormRef.value) return
+  await paymentFormRef.value.validate()
+  submitLoading.value = true
+  try {
+    await payment({
+      exceptionId: paymentForm.exceptionId,
+      paymentOperator: paymentForm.paymentOperator,
+      paymentRemark: paymentForm.paymentRemark
+    })
+    ElMessage.success('打款成功')
+    paymentDialogVisible.value = false
+    loadData()
+  } catch (e) {
+    ElMessage.error('打款失败: ' + (e.message || '未知错误'))
   } finally {
     submitLoading.value = false
   }
@@ -558,6 +822,23 @@ const handleClose = async (row) => {
     })
     await updateExceptionStatus(row.id, { status: 'CLOSED' })
     ElMessage.success('已关闭')
+    loadData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('操作失败')
+    }
+  }
+}
+
+const handleReprocess = async (row) => {
+  try {
+    await ElMessageBox.confirm('确认将该异常重新转为处理中？', '提示', {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await updateExceptionStatus(row.id, { status: 'PROCESSING' })
+    ElMessage.success('已重新转为处理中')
     loadData()
   } catch (e) {
     if (e !== 'cancel') {
@@ -621,5 +902,10 @@ onMounted(() => {
   color: #e6a23c;
   font-weight: 500;
   font-size: 13px;
+}
+
+.amount {
+  color: #f56c6c;
+  font-weight: bold;
 }
 </style>

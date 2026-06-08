@@ -1,8 +1,10 @@
 package com.express.controller;
 
+import com.express.dto.ApprovalRequest;
 import com.express.dto.CompensationRequest;
 import com.express.dto.PackageExceptionCreateRequest;
 import com.express.dto.PackageExceptionUpdateRequest;
+import com.express.dto.PaymentRequest;
 import com.express.entity.ExceptionStatus;
 import com.express.entity.ExceptionType;
 import com.express.entity.PackageException;
@@ -61,6 +63,18 @@ public class PackageExceptionController {
     @PostMapping("/compensate")
     public ResponseEntity<PackageException> compensate(@RequestBody CompensationRequest request) {
         PackageException exception = exceptionService.compensate(request);
+        return ResponseEntity.ok(exception);
+    }
+
+    @PostMapping("/approve")
+    public ResponseEntity<PackageException> approve(@RequestBody ApprovalRequest request) {
+        PackageException exception = exceptionService.approve(request);
+        return ResponseEntity.ok(exception);
+    }
+
+    @PostMapping("/payment")
+    public ResponseEntity<PackageException> payment(@RequestBody PaymentRequest request) {
+        PackageException exception = exceptionService.payment(request);
         return ResponseEntity.ok(exception);
     }
 

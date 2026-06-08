@@ -20,7 +20,8 @@ public class PackageException {
     @Column(nullable = false)
     private String trackingNumber;
 
-    private String orderNumber;
+    @Column(nullable = false)
+    private String orderId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -45,6 +46,18 @@ public class PackageException {
     private String compensationMethod;
 
     private LocalDateTime compensationTime;
+
+    private String approver;
+
+    private LocalDateTime approvalTime;
+
+    private String approvalRemark;
+
+    private String paymentOperator;
+
+    private LocalDateTime paymentTime;
+
+    private String paymentRemark;
 
     @Column(nullable = false)
     private LocalDateTime createTime;
