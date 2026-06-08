@@ -66,6 +66,18 @@ const routes = [
         name: 'PriceTemplate',
         component: () => import('@/views/PriceTemplate.vue'),
         meta: { title: '价格模板维护' }
+      },
+      {
+        path: 'exception-manage',
+        name: 'ExceptionManage',
+        component: () => import('@/views/ExceptionManage.vue'),
+        meta: { title: '异常管理' }
+      },
+      {
+        path: 'compensation',
+        name: 'Compensation',
+        component: () => import('@/views/Compensation.vue'),
+        meta: { title: '补偿管理' }
       }
     ]
   }

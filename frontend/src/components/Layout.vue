@@ -59,6 +59,20 @@
             <span>价格模板维护</span>
           </el-menu-item>
         </el-sub-menu>
+        <el-sub-menu index="exception">
+          <template #title>
+            <el-icon><Warning /></el-icon>
+            <span>异常管理</span>
+          </template>
+          <el-menu-item index="/exception-manage">
+            <el-icon><Warning /></el-icon>
+            <span>异常登记</span>
+          </el-menu-item>
+          <el-menu-item index="/compensation">
+            <el-icon><Money /></el-icon>
+            <span>补偿管理</span>
+          </el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </el-aside>
     <el-container>
