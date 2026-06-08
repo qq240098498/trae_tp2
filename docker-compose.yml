@@ -1,6 +1,20 @@
 version: '3.8'
 
 services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-express2024}
+      MYSQL_DATABASE: ${MYSQL_DB:-express_management}
+      MYSQL_USER: ${MYSQL_USER:-express}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-express2024}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
   backend:
     build:
       context: ./backend
@@ -9,6 +23,13 @@ services:
       - "8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=prod
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DB=${MYSQL_DB:-express_management}
+      - MYSQL_USER=${MYSQL_USER:-express}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-express2024}
+    depends_on:
+      - mysql
     restart: unless-stopped
 
   frontend:
@@ -20,3 +41,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  mysql_data:
