@@ -44,6 +44,12 @@ const routes = [
         meta: { title: '数据统计' }
       },
       {
+        path: 'courier-reconciliation',
+        name: 'CourierReconciliation',
+        component: () => import('@/views/CourierReconciliation.vue'),
+        meta: { title: '快递员对账' }
+      },
+      {
         path: '寄件登记',
         name: '寄件登记',
         component: () => import('@/views/SendRegister.vue'),

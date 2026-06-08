@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -36,4 +37,13 @@ public interface PackageRepository extends JpaRepository<Package, Long> {
     long countTodayPackages();
 
     long countByStatus(PackageStatus status);
+
+    @Query(value = "SELECT COUNT(p.id) FROM packages p WHERE CAST(p.create_time AS DATE) = :date AND p.courier = :courier", nativeQuery = true)
+    long countByDateAndCourier(@Param("date") LocalDate date, @Param("courier") String courier);
+
+    @Query(value = "SELECT COUNT(p.id) FROM packages p WHERE CAST(p.create_time AS DATE) = :date AND p.status = :status AND p.courier = :courier", nativeQuery = true)
+    long countByDateAndCourierAndStatus(@Param("date") LocalDate date, @Param("courier") String courier, @Param("status") String status);
+
+    @Query(value = "SELECT DISTINCT p.courier FROM packages p ORDER BY p.courier", nativeQuery = true)
+    List<String> findDistinctCouriers();
 }

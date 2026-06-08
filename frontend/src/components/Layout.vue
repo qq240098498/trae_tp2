@@ -37,6 +37,10 @@
           <el-icon><TrendCharts /></el-icon>
           <span>数据统计</span>
         </el-menu-item>
+        <el-menu-item index="/courier-reconciliation">
+          <el-icon><DocumentChecked /></el-icon>
+          <span>快递员对账</span>
+        </el-menu-item>
         <el-menu-item index="/寄件登记">
           <el-icon><Edit /></el-icon>
           <span>代寄件登记</span>
