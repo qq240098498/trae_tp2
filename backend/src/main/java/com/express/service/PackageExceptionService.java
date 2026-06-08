@@ -5,8 +5,10 @@ import com.express.dto.PackageExceptionCreateRequest;
 import com.express.dto.PackageExceptionUpdateRequest;
 import com.express.entity.ExceptionStatus;
 import com.express.entity.ExceptionType;
+import com.express.entity.Package;
 import com.express.entity.PackageException;
 import com.express.repository.PackageExceptionRepository;
+import com.express.repository.PackageRepository;
 import javax.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,15 +24,31 @@ public class PackageExceptionService {
 
     private final PackageExceptionRepository exceptionRepository;
 
+    private final PackageRepository packageRepository;
+
     @Transactional
     public PackageException createException(PackageExceptionCreateRequest request) {
         PackageException exception = new PackageException();
-        exception.setPackageId(request.getPackageId());
         exception.setTrackingNumber(request.getTrackingNumber());
+        exception.setOrderNumber(request.getOrderNumber());
         exception.setExceptionType(ExceptionType.valueOf(request.getExceptionType()));
         exception.setDescription(request.getDescription());
         exception.setReporter(request.getReporter());
         exception.setStatus(ExceptionStatus.PENDING);
+
+        if (request.getTrackingNumber() != null && !request.getTrackingNumber().isEmpty()) {
+            packageRepository.findByTrackingNumber(request.getTrackingNumber()).ifPresent(pkg -> {
+                exception.setPackageId(pkg.getId());
+            });
+        }
+
+        if (exception.getPackageId() == null && request.getPackageId() != null) {
+            exception.setPackageId(request.getPackageId());
+        }
+
+        if (exception.getPackageId() == null) {
+            throw new IllegalArgumentException("未找到对应入库包裹，请确认快递单号正确");
+        }
 
         return exceptionRepository.save(exception);
     }

@@ -52,3 +52,40 @@ export function getCompensationList() {
     method: 'get'
   })
 }
+
+export function getCompensationStandards() {
+  return request({
+    url: '/compensation-standards',
+    method: 'get'
+  })
+}
+
+export function createCompensationStandard(data) {
+  return request({
+    url: '/compensation-standards',
+    method: 'post',
+    data
+  })
+}
+
+export function updateCompensationStandard(id, data) {
+  return request({
+    url: `/compensation-standards/${id}`,
+    method: 'put',
+    data
+  })
+}
+
+export function deleteCompensationStandard(id) {
+  return request({
+    url: `/compensation-standards/${id}`,
+    method: 'delete'
+  })
+}
+
+export function getCompensationStandardByType(exceptionType) {
+  return request({
+    url: `/compensation-standards/type/${exceptionType}`,
+    method: 'get'
+  })
+}

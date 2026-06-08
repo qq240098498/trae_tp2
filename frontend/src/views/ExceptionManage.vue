@@ -47,6 +47,7 @@
 
       <el-table :data="tableData" border stripe v-loading="loading">
         <el-table-column prop="id" label="ID" width="60" />
+        <el-table-column prop="orderNumber" label="订单号" width="140" />
         <el-table-column prop="trackingNumber" label="快递单号" width="160" />
         <el-table-column prop="exceptionType" label="异常类型" width="100">
           <template #default="{ row }">
@@ -118,17 +119,30 @@
     <el-dialog v-model="createDialogVisible" title="登记包裹异常" width="550px" destroy-on-close>
       <el-form :model="createForm" label-width="100px" :rules="createRules" ref="createFormRef">
         <el-form-item label="快递单号" prop="trackingNumber">
-          <el-input v-model="createForm.trackingNumber" placeholder="请输入快递单号" />
+          <el-input v-model="createForm.trackingNumber" placeholder="请输入快递单号" @blur="handleTrackingNumberBlur" />
+        </el-form-item>
+        <el-form-item label="订单号">
+          <el-input v-model="createForm.orderNumber" placeholder="请输入订单号（可选）" />
         </el-form-item>
         <el-form-item label="包裹ID">
-          <el-input v-model="createForm.packageId" placeholder="请输入包裹ID（可选）" />
+          <el-input v-model="createForm.packageId" placeholder="输入单号后自动绑定" disabled />
+        </el-form-item>
+        <el-form-item v-if="bindPackageInfo" label="包裹信息">
+          <div class="bind-info">
+            <span>收件人: {{ bindPackageInfo.receiverName }}</span>
+            <span>手机号: {{ bindPackageInfo.receiverPhone }}</span>
+            <span>货架: {{ bindPackageInfo.shelfLocation || '-' }}</span>
+          </div>
         </el-form-item>
         <el-form-item label="异常类型" prop="exceptionType">
-          <el-select v-model="createForm.exceptionType" placeholder="请选择异常类型" style="width: 100%">
+          <el-select v-model="createForm.exceptionType" placeholder="请选择异常类型" style="width: 100%" @change="handleExceptionTypeChange">
             <el-option label="破损" value="DAMAGED" />
             <el-option label="丢件" value="LOST" />
             <el-option label="错件" value="WRONG" />
           </el-select>
+        </el-form-item>
+        <el-form-item v-if="standardAmountHint !== null" label="标准补偿金额">
+          <span class="standard-hint">¥{{ standardAmountHint }}（参考补偿标准）</span>
         </el-form-item>
         <el-form-item label="异常描述" prop="description">
           <el-input v-model="createForm.description" type="textarea" :rows="3" placeholder="请描述异常情况" />
@@ -175,6 +189,14 @@
         <el-form-item label="快递单号">
           <el-input :model-value="compensateForm.trackingNumber" disabled />
         </el-form-item>
+        <el-form-item label="异常类型">
+          <el-tag :type="getTypeTagType(compensateForm.exceptionType)" size="small">
+            {{ getTypeText(compensateForm.exceptionType) }}
+          </el-tag>
+          <span v-if="compensateForm.standardAmount !== null" class="standard-hint" style="margin-left: 12px">
+            标准补偿: ¥{{ compensateForm.standardAmount }}
+          </span>
+        </el-form-item>
         <el-form-item label="补偿金额" prop="compensationAmount">
           <el-input-number v-model="compensateForm.compensationAmount" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
@@ -200,6 +222,7 @@
       <el-descriptions :column="2" border v-if="currentDetail">
         <el-descriptions-item label="异常ID">{{ currentDetail.id }}</el-descriptions-item>
         <el-descriptions-item label="快递单号">{{ currentDetail.trackingNumber }}</el-descriptions-item>
+        <el-descriptions-item label="订单号">{{ currentDetail.orderNumber || '-' }}</el-descriptions-item>
         <el-descriptions-item label="包裹ID">{{ currentDetail.packageId }}</el-descriptions-item>
         <el-descriptions-item label="异常类型">
           <el-tag :type="getTypeTagType(currentDetail.exceptionType)" size="small">
@@ -231,7 +254,8 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { searchExceptions, createException, updateExceptionStatus, compensate } from '@/api/exception'
+import { searchExceptions, createException, updateExceptionStatus, compensate, getCompensationStandardByType, getCompensationStandards } from '@/api/exception'
+import { searchPackages } from '@/api/package'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -260,9 +284,16 @@ const compensateFormRef = ref(null)
 
 const currentDetail = ref(null)
 
+const bindPackageInfo = ref(null)
+
+const standardAmountHint = ref(null)
+
+const standardMap = ref({})
+
 const createForm = reactive({
   packageId: '',
   trackingNumber: '',
+  orderNumber: '',
   exceptionType: '',
   description: '',
   reporter: ''
@@ -279,6 +310,8 @@ const processForm = reactive({
 const compensateForm = reactive({
   exceptionId: '',
   trackingNumber: '',
+  exceptionType: '',
+  standardAmount: null,
   compensationAmount: 0,
   compensationMethod: '',
   handleRemark: ''
@@ -314,6 +347,47 @@ const getStatusText = (status) => {
 const getStatusTagType = (status) => {
   const map = { 'PENDING': 'danger', 'PROCESSING': 'warning', 'RESOLVED': 'success', 'CLOSED': 'info' }
   return map[status] || 'info'
+}
+
+const loadStandards = async () => {
+  try {
+    const res = await getCompensationStandards()
+    if (Array.isArray(res)) {
+      const map = {}
+      res.forEach(s => {
+        if (s.enabled) {
+          map[s.exceptionType] = s.standardAmount
+        }
+      })
+      standardMap.value = map
+    }
+  } catch (e) {}
+}
+
+const handleTrackingNumberBlur = async () => {
+  bindPackageInfo.value = null
+  createForm.packageId = ''
+  if (!createForm.trackingNumber) return
+  try {
+    const res = await searchPackages({ trackingNumber: createForm.trackingNumber })
+    if (Array.isArray(res) && res.length > 0) {
+      const pkg = res[0]
+      createForm.packageId = pkg.id
+      bindPackageInfo.value = {
+        receiverName: pkg.receiverName,
+        receiverPhone: pkg.receiverPhone,
+        shelfLocation: pkg.shelfLocation
+      }
+    }
+  } catch (e) {}
+}
+
+const handleExceptionTypeChange = (val) => {
+  if (val && standardMap.value[val] !== undefined) {
+    standardAmountHint.value = standardMap.value[val]
+  } else {
+    standardAmountHint.value = null
+  }
 }
 
 const loadData = async () => {
@@ -356,10 +430,13 @@ const handleCreate = () => {
   Object.assign(createForm, {
     packageId: '',
     trackingNumber: '',
+    orderNumber: '',
     exceptionType: '',
     description: '',
     reporter: ''
   })
+  bindPackageInfo.value = null
+  standardAmountHint.value = null
   createDialogVisible.value = true
 }
 
@@ -412,10 +489,13 @@ const submitProcess = async () => {
 }
 
 const handleCompensate = (row) => {
+  const stdAmount = standardMap.value[row.exceptionType] !== undefined ? standardMap.value[row.exceptionType] : null
   Object.assign(compensateForm, {
     exceptionId: row.id,
     trackingNumber: row.trackingNumber,
-    compensationAmount: 0,
+    exceptionType: row.exceptionType,
+    standardAmount: stdAmount,
+    compensationAmount: stdAmount !== null ? stdAmount : 0,
     compensationMethod: '',
     handleRemark: ''
   })
@@ -467,6 +547,7 @@ const handleDetail = (row) => {
 
 onMounted(() => {
   loadData()
+  loadStandards()
 })
 </script>
 
@@ -491,5 +572,18 @@ onMounted(() => {
 
 .query-form {
   margin-bottom: 20px;
+}
+
+.bind-info {
+  display: flex;
+  gap: 16px;
+  color: #606266;
+  font-size: 13px;
+}
+
+.standard-hint {
+  color: #e6a23c;
+  font-weight: 500;
+  font-size: 13px;
 }
 </style>

@@ -78,6 +78,12 @@ const routes = [
         name: 'Compensation',
         component: () => import('@/views/Compensation.vue'),
         meta: { title: '补偿管理' }
+      },
+      {
+        path: 'compensation-standard',
+        name: 'CompensationStandard',
+        component: () => import('@/views/CompensationStandard.vue'),
+        meta: { title: '补偿金额标准' }
       }
     ]
   }

@@ -72,6 +72,10 @@
             <el-icon><Money /></el-icon>
             <span>补偿管理</span>
           </el-menu-item>
+          <el-menu-item index="/compensation-standard">
+            <el-icon><Coin /></el-icon>
+            <span>补偿金额标准</span>
+          </el-menu-item>
         </el-sub-menu>
       </el-menu>
     </el-aside>

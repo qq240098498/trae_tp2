@@ -9,6 +9,8 @@ public class PackageExceptionCreateRequest {
 
     private String trackingNumber;
 
+    private String orderNumber;
+
     private String exceptionType;
 
     private String description;
