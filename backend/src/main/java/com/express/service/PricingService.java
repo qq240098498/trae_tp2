@@ -25,7 +25,7 @@ public class PricingService {
         if (request.getWeight() == null || request.getWeight() <= 0) {
             throw new IllegalArgumentException("重量必须大于0");
         }
-
+        // 增加测试代码
         PriceTemplate template;
         if (request.getTemplateId() != null) {
             template = templateRepository.findById(request.getTemplateId())
